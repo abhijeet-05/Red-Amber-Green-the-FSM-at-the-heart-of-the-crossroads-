@@ -1,0 +1,13 @@
+# Icarus + GTKWave convenience
+SIM_TOP=sim/tb_top_crossroads.v
+RTL=rtl/tick_gen.v rtl/traffic_light_fsm.v rtl/top_crossroads.v
+OUT=sim/a.out
+VCD=sim/top.vcd
+
+sim:
+	iverilog -g2012 -o $(OUT) $(SIM_TOP) $(RTL)
+	vvp $(OUT)
+	@command -v gtkwave >/dev/null 2>&1 && gtkwave $(VCD) >/dev/null 2>&1 & true
+
+clean:
+	rm -f $(OUT) $(VCD)
