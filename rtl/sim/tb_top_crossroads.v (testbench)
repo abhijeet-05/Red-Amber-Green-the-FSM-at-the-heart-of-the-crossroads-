@@ -1,0 +1,75 @@
+//------------------------------------------------------------------------------
+// tb_top_crossroads.v
+// Fast simulation with tiny divisors/durations so you can see multiple cycles.
+// Run: iverilog -g2012 -o sim/a.out sim/tb_top_crossroads.v rtl/*.v && vvp sim/a.out
+//------------------------------------------------------------------------------
+`timescale 1ns/1ps
+
+module tb_top_crossroads;
+    // Sim clock: 10ns period = 100 MHz
+    reg clk = 0;
+    always #5 clk = ~clk;
+
+    reg rst = 1;
+
+    wire ns_red, ns_amber, ns_green;
+    wire ew_red, ew_amber, ew_green;
+    wire [2:0] state;
+
+    // Use very small params for quick sim
+    localparam integer DIVISOR_SIM    = 10;  // tick ~ every 10 cycles (100 ns)
+    localparam integer P_NS_GREEN_SIM = 4;   // ticks
+    localparam integer P_NS_AMBER_SIM = 2;
+    localparam integer P_ALL_RED_SIM  = 1;
+    localparam integer P_EW_GREEN_SIM = 3;
+    localparam integer P_EW_AMBER_SIM = 2;
+
+    top_crossroads #(
+        .DIVISOR   (DIVISOR_SIM),
+        .P_NS_GREEN(P_NS_GREEN_SIM),
+        .P_NS_AMBER(P_NS_AMBER_SIM),
+        .P_ALL_RED (P_ALL_RED_SIM),
+        .P_EW_GREEN(P_EW_GREEN_SIM),
+        .P_EW_AMBER(P_EW_AMBER_SIM)
+    ) dut (
+        .clk(clk),
+        .rst(rst),
+        .ns_red(ns_red),
+        .ns_amber(ns_amber),
+        .ns_green(ns_green),
+        .ew_red(ew_red),
+        .ew_amber(ew_amber),
+        .ew_green(ew_green),
+        .state(state)
+    );
+
+    // VCD dump
+    initial begin
+        $dumpfile("sim/top.vcd");
+        $dumpvars(0, tb_top_crossroads);
+    end
+
+    // Reset and run
+    initial begin
+        rst = 1;
+        repeat (5) @(posedge clk);
+        rst = 0;
+
+        // Run long enough to observe several full cycles
+        // Each tick ~100ns; total ~ a few microseconds
+        #(20000);  // 20 us of sim time
+        $display("\n[TB] Finished simulation.");
+        $finish;
+    end
+
+    // Pretty-print changes
+    reg [2:0] last_state;
+    always @(posedge clk) begin
+        if (rst) last_state <= 3'd7;
+        else if (state != last_state) begin
+            $display("[%0t ns] STATE=%0d  NS(R,A,G)=%0b%0b%0b  EW(R,A,G)=%0b%0b%0b",
+                     $time, state, ns_red,ns_amber,ns_green, ew_red,ew_amber,ew_green);
+            last_state <= state;
+        end
+    end
+endmodule
